@@ -8,38 +8,76 @@
 
 import SpriteKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    enum State{
+        case Playing
+        case GameClear
+        case GameOver
+    }
+    let playerContact:UInt32 = 0x1 << 0
+    let enemyContact:UInt32 = 0x1 << 1
+    
+    let player = SKSpriteNode(imageNamed: "Player")
+    let enemy = SKSpriteNode(imageNamed: "Enemy")
+    var state = State.Playing
+    
     override func didMoveToView(view: SKView) {
-        /* Setup your scene here */
-        let myLabel = SKLabelNode(fontNamed:"Chalkduster")
-        myLabel.text = "Hello, World!"
-        myLabel.fontSize = 45
-        myLabel.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame))
+        physicsWorld.gravity = CGVectorMake(0, 0)
+        physicsWorld.contactDelegate = self
         
-        self.addChild(myLabel)
+        //　背景
+        let fieldImageLength:CGFloat = 32
+        for i in 0...Int(frame.size.width / fieldImageLength) + 1{
+            for j in 0...Int(frame.size.height / fieldImageLength) + 1{
+                let field = SKSpriteNode(imageNamed: "Field")
+                field.position = CGPoint(x: CGFloat(i) * fieldImageLength, y: CGFloat(j) * fieldImageLength)
+                field.zPosition = -1
+                addChild(field)
+            }
+        }
+        
+        // 敵
+        enemy.position = CGPoint(x: 50, y: 300)
+        enemy.physicsBody = SKPhysicsBody(rectangleOfSize: enemy.size)
+        addChild(enemy)
+        
+        // プレーヤー
+        player.position = CGPoint(x: 250, y: 300)
+        player.physicsBody = SKPhysicsBody(rectangleOfSize: player.size)
+        player.physicsBody?.contactTestBitMask = playerContact
+        addChild(player)
     }
     
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-       /* Called when a touch begins */
+    func didBeginContact(contact: SKPhysicsContact) {
+        state = .GameClear
+        enemy.removeFromParent()
         
-        for touch in touches {
-            let location = touch.locationInNode(self)
-            
-            let sprite = SKSpriteNode(imageNamed:"Spaceship")
-            
-            sprite.xScale = 0.5
-            sprite.yScale = 0.5
-            sprite.position = location
-            
-            let action = SKAction.rotateByAngle(CGFloat(M_PI), duration:1)
-            
-            sprite.runAction(SKAction.repeatActionForever(action))
-            
-            self.addChild(sprite)
+        let label = SKLabelNode(fontNamed: "HiraginoSans-W6")
+        label.text = "ゲームクリア"
+        label.fontSize = 45
+        label.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame) - 20)
+        addChild(label)
+    }
+
+    override func update(currentTime: CFTimeInterval) {
+        if state == .Playing{
+            enemy.position.x += 1
+            if frame.width < enemy.position.x{
+                state = .GameOver
+                let label = SKLabelNode(fontNamed: "HiraginoSans-W6")
+                label.text = "ゲームオーバー"
+                label.fontSize = 45
+                label.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame) - 20)
+                addChild(label)
+            }
         }
     }
-   
-    override func update(currentTime: CFTimeInterval) {
-        /* Called before each frame is rendered */
+    
+    override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        let touch = touches.first!
+        let location = touch.locationInNode(self)
+        let prevLocation = touch.previousLocationInNode(self)
+        player.position.x += location.x - prevLocation.x
+        player.position.y += location.y - prevLocation.y
     }
 }
